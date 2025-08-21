@@ -1,0 +1,52 @@
+import { Buffer } from "buffer";
+import { PNG } from "pngjs/browser";
+import { TensorPtr } from "react-native-executorch/src/types/common";
+import {
+  addScalar,
+  clamp,
+  divScalar,
+  formatTensor,
+  mulScalar,
+  permute120,
+  squeeze,
+} from "./tensor_utils";
+
+export function convertTensorToImage(tensor: TensorPtr) {
+  let imageTensor = addScalar(divScalar(tensor, 2), 0.5);
+  imageTensor = clamp(imageTensor, 0, 1);
+  imageTensor = squeeze(imageTensor);
+  imageTensor = permute120(imageTensor);
+  imageTensor = mulScalar(imageTensor, 255);
+  console.log("imageTensor:", formatTensor(imageTensor));
+  const [height, width, channels] = imageTensor.sizes;
+  const floatData = new Float32Array(imageTensor.dataPtr);
+  console.log("imageTensor32:", formatTensor(imageTensor));
+
+  const rgbaData = new Uint8Array(width * height * 4);
+  for (let i = 0; i < width * height; i++) {
+    rgbaData[i * 4 + 0] = floatData[i * channels + 0];
+    rgbaData[i * 4 + 1] = floatData[i * channels + 1];
+    rgbaData[i * 4 + 2] = floatData[i * channels + 2];
+    rgbaData[i * 4 + 3] = 255;
+  }
+  console.log("RGB:", rgbaData.slice(0, 10), rgbaData.slice(-10));
+  const image = { data: rgbaData, width, height };
+  return image;
+}
+
+export function getBase64FromImage(
+  image: {
+    data: Uint8ClampedArray;
+    width: number;
+    height: number;
+  } | null
+): string {
+  if (!image) {
+    return "";
+  }
+  const png = new PNG({ width: image.width, height: image.height });
+  png.data = Buffer.from(image.data);
+  const pngBuffer = PNG.sync.write(png, { colorType: 6 });
+  const pngString = pngBuffer.toString("base64");
+  return pngString;
+}
