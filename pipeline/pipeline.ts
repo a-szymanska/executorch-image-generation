@@ -1,4 +1,3 @@
-import schedulerConfig from "@/assets/data/scheduler_config.json";
 import tokensData from "@/assets/data/text_encoder.json";
 import uncondTokensData from "@/assets/data/text_encoder_empty.json";
 import {
@@ -14,7 +13,6 @@ import { convertTensorToImage, RawImage } from "./image_utils";
 import { Scheduler } from "./scheduler";
 import { Unet } from "./unet";
 import { ScalarType } from "react-native-executorch/src/types/common";
-import { TokenizerModule } from "react-native-executorch";
 
 const height = 512;
 const width = 512;
@@ -61,7 +59,6 @@ export default async function runPipeline(
     const shape = [batchSize, in_channels, latent_height, latent_width];
     let latentsTensor = randomNormalTensor(shape);
 
-    console.log("scheduler:", schedulerConfig);
     scheduler.set_timesteps(numInferenceSteps);
     const timesteps = scheduler.timesteps;
 
