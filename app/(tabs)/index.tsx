@@ -5,10 +5,13 @@ import runPipeline from "@/pipeline/pipeline";
 import { Unet } from "@/pipeline/unet";
 import React, { useEffect, useState } from "react";
 import { Button, Image, ScrollView, StyleSheet, Text } from "react-native";
+import { Scheduler } from "@/pipeline/scheduler";
+import { SCHEDULER, TEXT_ENCODER, UNET, VAE } from "@/pipeline/model_paths";
 
 export default function App() {
   const [pipelineRunning, setPipelineRunning] = useState<boolean>(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
+  const scheduler = React.useMemo(() => new Scheduler(), []);
   const encoder = React.useMemo(() => new Encoder(), []);
   const unet = React.useMemo(() => new Unet(), []);
   const decoder = React.useMemo(() => new Decoder(), []);
@@ -18,9 +21,10 @@ export default function App() {
     const loadModels = async () => {
       try {
         console.log("Loading models...");
-        await encoder.load();
-        await unet.load();
-        await decoder.load();
+        await scheduler.load(SCHEDULER);
+        await encoder.load(TEXT_ENCODER);
+        await unet.load(UNET);
+        await decoder.load(VAE);
 
         console.log("Models loaded successfully");
       } catch (e: any) {
@@ -35,9 +39,15 @@ export default function App() {
   const generate = async () => {
     try {
       setPipelineRunning(true);
-      await runPipeline(encoder, unet, decoder, (rawImage: RawImage | null) => {
-        setImageUri(getBase64FromImage(rawImage));
-      });
+      await runPipeline(
+        scheduler,
+        encoder,
+        unet,
+        decoder,
+        (rawImage: RawImage | null) => {
+          setImageUri(getBase64FromImage(rawImage));
+        }
+      );
       console.log("Image generated!");
     } catch (e: any) {
       console.error("Generating error:", e.message || e);

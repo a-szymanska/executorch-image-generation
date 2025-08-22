@@ -3,12 +3,11 @@ import {
   ScalarType,
   TensorPtr,
 } from "react-native-executorch/src/types/common";
-import { UNET } from "./constants";
 
 export class Unet {
   module = new ExecutorchModule();
-  async load(): Promise<void> {
-    await this.module.load(UNET);
+  async load(modelSource: string): Promise<void> {
+    await this.module.load(modelSource);
   }
 
   async forward(

@@ -1,4 +1,3 @@
-import latentsData from "@/assets/data/latents.json";
 import schedulerConfig from "@/assets/data/scheduler_config.json";
 import tokensData from "@/assets/data/text_encoder.json";
 import uncondTokensData from "@/assets/data/text_encoder_empty.json";
@@ -24,6 +23,7 @@ const guidanceScale = 7.5;
 const batchSize = 1;
 
 export default async function runPipeline(
+  scheduler: Scheduler,
   encoder: Encoder,
   unet: Unet,
   decoder: Decoder,
@@ -61,7 +61,7 @@ export default async function runPipeline(
     const shape = [batchSize, in_channels, latent_height, latent_width];
     let latentsTensor = randomNormalTensor(shape);
 
-    const scheduler = new Scheduler(schedulerConfig);
+    console.log("scheduler:", schedulerConfig);
     scheduler.set_timesteps(numInferenceSteps);
     const timesteps = scheduler.timesteps;
 

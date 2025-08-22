@@ -18,8 +18,22 @@ interface SchedulerConfig {
   steps_offset: number;
 }
 
+async function fetchConfig(url: string): Promise<SchedulerConfig | null> {
+  try {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`Failed to fetch scheduler config from ${url}`);
+    }
+    const config = await response.json();
+    return config;
+  } catch (e) {
+    console.error("Error fetching scheduler:", e);
+    return null;
+  }
+}
+
 export class Scheduler {
-  private readonly config: SchedulerConfig;
+  public config: SchedulerConfig | null = null;
   private readonly betas: number[];
   private readonly alphas: number[];
   public readonly alphas_cumprod: number[];
@@ -33,14 +47,18 @@ export class Scheduler {
   public timesteps: number[] = [];
   private _timesteps: number[] = [];
 
-  constructor(config: SchedulerConfig) {
-    this.config = config;
+  public async load(config: string) {
+    this.config = await fetchConfig(config);
+    if (!config) {
+      console.error("Scheduler config not loaded properly.");
+      return;
+    }
 
     const betasArray: number[] = [];
-    const start = Math.sqrt(this.config.beta_start);
-    const end = Math.sqrt(this.config.beta_end);
-    const step = (end - start) / (this.config.num_train_timesteps - 1);
-    for (let i = 0; i < this.config.num_train_timesteps; i++) {
+    const start = Math.sqrt(this.config!.beta_start);
+    const end = Math.sqrt(this.config!.beta_end);
+    const step = (end - start) / (this.config!.num_train_timesteps - 1);
+    for (let i = 0; i < this.config!.num_train_timesteps; i++) {
       const value = start + step * i;
       betasArray.push(value * value);
     }
@@ -59,7 +77,7 @@ export class Scheduler {
     this.final_alpha_cumprod = this.alphas_cumprod[0];
 
     const initialTimesteps = Array.from(
-      { length: this.config.num_train_timesteps },
+      { length: this.config!.num_train_timesteps },
       (_, i) => i
     );
     this._timesteps = initialTimesteps.reverse();
@@ -69,11 +87,11 @@ export class Scheduler {
     this.num_inference_steps = num_inference_steps;
 
     const step_ratio =
-      this.config.num_train_timesteps / this.num_inference_steps;
+      this.config!.num_train_timesteps / this.num_inference_steps;
 
     this._timesteps = Array.from(
       { length: num_inference_steps },
-      (_, i) => Math.round(i * step_ratio) + this.config.steps_offset
+      (_, i) => Math.round(i * step_ratio) + this.config!.steps_offset
     );
 
     const plms_timesteps = [
@@ -100,7 +118,7 @@ export class Scheduler {
     }
 
     let prev_timestep =
-      timestep - this.config.num_train_timesteps / this.num_inference_steps;
+      timestep - this.config!.num_train_timesteps / this.num_inference_steps;
 
     if (this.counter !== 1) {
       this.ets = this.ets.slice(-3);
@@ -108,7 +126,7 @@ export class Scheduler {
     } else {
       prev_timestep = timestep;
       timestep =
-        timestep + this.config.num_train_timesteps / this.num_inference_steps;
+        timestep + this.config!.num_train_timesteps / this.num_inference_steps;
     }
 
     let ets_output: TensorPtr;
@@ -203,6 +221,6 @@ export class Scheduler {
   }
 
   public get length(): number {
-    return this.config.num_train_timesteps;
+    return this.config!.num_train_timesteps;
   }
 }
