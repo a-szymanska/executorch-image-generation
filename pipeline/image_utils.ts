@@ -11,6 +11,12 @@ import {
   squeeze,
 } from "./tensor_utils";
 
+export interface RawImage {
+  data: Uint8Array;
+  width: number;
+  height: number;
+}
+
 export function convertTensorToImage(tensor: TensorPtr) {
   let imageTensor = addScalar(divScalar(tensor, 2), 0.5);
   imageTensor = clamp(imageTensor, 0, 1);
@@ -34,13 +40,7 @@ export function convertTensorToImage(tensor: TensorPtr) {
   return image;
 }
 
-export function getBase64FromImage(
-  image: {
-    data: Uint8ClampedArray;
-    width: number;
-    height: number;
-  } | null
-): string {
+export function getBase64FromImage(image: RawImage | null): string {
   if (!image) {
     return "";
   }

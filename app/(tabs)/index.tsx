@@ -1,6 +1,6 @@
 import { Decoder } from "@/pipeline/decoder";
 import { Encoder } from "@/pipeline/encoder";
-import { getBase64FromImage } from "@/pipeline/image_utils";
+import { getBase64FromImage, RawImage } from "@/pipeline/image_utils";
 import runPipeline from "@/pipeline/pipeline";
 import { Unet } from "@/pipeline/unet";
 import React, { useEffect, useState } from "react";
@@ -35,9 +35,9 @@ export default function App() {
   const generate = async () => {
     try {
       setPipelineRunning(true);
-      setImageUri(
-        getBase64FromImage(await runPipeline(encoder, unet, decoder))
-      );
+      await runPipeline(encoder, unet, decoder, (rawImage: RawImage | null) => {
+        setImageUri(getBase64FromImage(rawImage));
+      });
       console.log("Image generated!");
     } catch (e: any) {
       console.error("Generating error:", e.message || e);
@@ -57,7 +57,6 @@ export default function App() {
       {imageUri && (
         <Image
           style={styles.image}
-          // The magic happens here with the data URI!
           source={{ uri: `data:image/png;base64,${imageUri}` }}
         />
       )}

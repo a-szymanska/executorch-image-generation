@@ -1,8 +1,5 @@
 import { ExecutorchModule } from "react-native-executorch";
-import {
-  ScalarType,
-  TensorPtr,
-} from "react-native-executorch/src/types/common";
+import { TensorPtr } from "react-native-executorch/src/types/common";
 import { TEXT_ENCODER } from "./constants";
 
 export class Encoder {
@@ -11,13 +8,8 @@ export class Encoder {
     await this.module.load(TEXT_ENCODER);
   }
 
-  async forward(inputArray: number[], shape: number[]): Promise<TensorPtr[]> {
-    const intputTensor = {
-      dataPtr: BigInt64Array.from(inputArray.map(BigInt)),
-      sizes: shape,
-      scalarType: ScalarType.LONG,
-    };
-    const outputTensor = await this.module.forward([intputTensor]);
+  async forward(inputTensor: TensorPtr): Promise<TensorPtr[]> {
+    const outputTensor = await this.module.forward([inputTensor]);
     return outputTensor;
   }
 }
