@@ -1,63 +1,51 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import { Decoder } from "@/pipeline/decoder";
-import { Encoder } from "@/pipeline/encoder";
 import { getBase64FromImage, RawImage } from "@/pipeline/image_utils";
-import runPipeline from "@/pipeline/pipeline";
-import { Unet } from "@/pipeline/unet";
+import { BK_SDM_TINY_VPRED } from "@/pipeline/model_paths";
+import { Pipeline } from "@/pipeline/pipeline";
 import React, { useEffect, useState } from "react";
-import { Button, Image, ScrollView, StyleSheet, Text } from "react-native";
-import { Scheduler } from "@/pipeline/scheduler";
 import {
-  SCHEDULER,
-  TEXT_ENCODER,
-  TOKENIZER,
-  UNET,
-  VAE,
-} from "@/pipeline/model_paths";
-import { TokenizerModule } from "react-native-executorch";
+  Button,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+} from "react-native";
 
 export default function App() {
+  const [pipelineLoading, setPipelineLoading] = useState<boolean>(false);
   const [pipelineRunning, setPipelineRunning] = useState<boolean>(false);
+  const [prompt, setPrompt] = useState<string>("");
   const [imageUri, setImageUri] = useState<string | null>(null);
-  const tokenizer = new TokenizerModule();
-  const [scheduler] = useState(() => new Scheduler());
-  const [encoder] = useState(() => new Encoder());
-  const [unet] = useState(() => new Unet());
-  const [decoder] = useState(() => new Decoder());
+  const [pipeline] = useState(
+    () =>
+      new Pipeline((rawImage: RawImage | null) => {
+        setImageUri(getBase64FromImage(rawImage));
+      })
+  );
   let loadingError: any = null;
 
   useEffect(() => {
     const loadModels = async () => {
       try {
         console.log("Loading models...");
-        await tokenizer.load(TOKENIZER);
-        await scheduler.load(SCHEDULER);
-        await encoder.load(TEXT_ENCODER);
-        await unet.load(UNET);
-        await decoder.load(VAE);
+        await pipeline.load(BK_SDM_TINY_VPRED);
         console.log("Models loaded!");
       } catch (e: any) {
-        console.error("Failed to load models:", e);
+        console.error(e);
         loadingError = e;
       }
     };
 
+    setPipelineLoading(true);
     loadModels();
-  }, [encoder]);
+    setPipelineLoading(false);
+  }, [pipeline]);
 
   const generate = async () => {
     try {
       setPipelineRunning(true);
-      await runPipeline(
-        tokenizer,
-        scheduler,
-        encoder,
-        unet,
-        decoder,
-        (rawImage: RawImage | null) => {
-          setImageUri(getBase64FromImage(rawImage));
-        }
-      );
+      await pipeline.run(prompt);
       console.log("Image generated!");
     } catch (e: any) {
       console.error("Generating error:", e.message || e);
@@ -68,11 +56,18 @@ export default function App() {
   return (
     <ScrollView contentContainerStyle={styles.container}>
       <Text style={styles.title}>Stable Diffusion Pipeline</Text>
+      <TextInput
+        style={styles.input}
+        placeholder="a castle"
+        maxLength={60}
+        value={prompt}
+        onChangeText={setPrompt}
+      />
 
       <Button
         title={"Run Pipeline"}
         onPress={generate}
-        disabled={pipelineRunning || !!loadingError}
+        disabled={pipelineLoading || pipelineRunning || !!loadingError}
       />
       {imageUri && (
         <Image
@@ -98,6 +93,14 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     marginBottom: 20,
     color: "#333",
+  },
+  input: {
+    borderWidth: 1,
+    borderColor: "#ccc",
+    padding: 8,
+    borderRadius: 6,
+    width: "100%",
+    marginBottom: 12,
   },
   image: {
     width: 320,

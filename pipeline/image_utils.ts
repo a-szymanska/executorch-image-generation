@@ -16,7 +16,7 @@ export interface RawImage {
   height: number;
 }
 
-export function convertTensorToImage(tensor: TensorPtr) {
+export function convertTensorToImage(tensor: TensorPtr): RawImage {
   let imageTensor = addScalar(divScalar(tensor, 2), 0.5);
   imageTensor = clamp(imageTensor, 0, 1);
   imageTensor = squeeze(imageTensor);
