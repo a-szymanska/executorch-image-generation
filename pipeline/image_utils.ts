@@ -5,7 +5,6 @@ import {
   addScalar,
   clamp,
   divScalar,
-  formatTensor,
   mulScalar,
   permute120,
   squeeze,
@@ -23,10 +22,8 @@ export function convertTensorToImage(tensor: TensorPtr) {
   imageTensor = squeeze(imageTensor);
   imageTensor = permute120(imageTensor);
   imageTensor = mulScalar(imageTensor, 255);
-  console.log("imageTensor:", formatTensor(imageTensor));
   const [height, width, channels] = imageTensor.sizes;
   const floatData = new Float32Array(imageTensor.dataPtr);
-  console.log("imageTensor32:", formatTensor(imageTensor));
 
   const rgbaData = new Uint8Array(width * height * 4);
   for (let i = 0; i < width * height; i++) {
@@ -35,7 +32,6 @@ export function convertTensorToImage(tensor: TensorPtr) {
     rgbaData[i * 4 + 2] = floatData[i * channels + 2];
     rgbaData[i * 4 + 3] = 255;
   }
-  console.log("RGB:", rgbaData.slice(0, 10), rgbaData.slice(-10));
   const image = { data: rgbaData, width, height };
   return image;
 }

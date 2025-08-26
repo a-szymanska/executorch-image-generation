@@ -1,10 +1,9 @@
-import tokensData from "@/assets/data/text_encoder.json";
-import uncondTokensData from "@/assets/data/text_encoder_empty.json";
 import {
   applyGuidance,
   chunkTensor,
   concatenateTensors,
   divScalar,
+  formatTensor,
   randomNormalTensor,
 } from "@/pipeline/tensor_utils";
 import { Decoder } from "./decoder";
@@ -13,6 +12,7 @@ import { convertTensorToImage, RawImage } from "./image_utils";
 import { Scheduler } from "./scheduler";
 import { Unet } from "./unet";
 import { ScalarType } from "react-native-executorch/src/types/common";
+import { TokenizerModule } from "react-native-executorch";
 
 const height = 512;
 const width = 512;
@@ -21,6 +21,7 @@ const guidanceScale = 7.5;
 const batchSize = 1;
 
 export default async function runPipeline(
+  tokenizer: TokenizerModule,
   scheduler: Scheduler,
   encoder: Encoder,
   unet: Unet,
@@ -28,35 +29,37 @@ export default async function runPipeline(
   onInferenceStep: (rawImage: RawImage | null) => void
 ) {
   try {
-    // ------------------------------ Encoding ------------------------------
-    const { input_ids: tokensArray, shape: tokensShape } = tokensData!;
+    // ----------------------------- Tokenizing -----------------------------
+    const tokensArray = await tokenizer.encode("<|startoftext|>" + "a castle");
     const tokensTensor = {
-      dataPtr: BigInt64Array.from(tokensArray.map(BigInt)),
-      sizes: tokensShape,
+      dataPtr: new BigInt64Array(tokensArray.map(BigInt)),
+      sizes: [1, tokensArray.length],
       scalarType: ScalarType.LONG,
     };
-    const encoderOutput = (await encoder.forward(tokensTensor))[0];
 
-    const { input_ids: uncondTokensArray, shape: uncondTokensShape } =
-      uncondTokensData!;
+    const uncondTokensArray = await tokenizer.encode("<|startoftext|>");
     const uncondTokensTensor = {
-      dataPtr: BigInt64Array.from(uncondTokensArray.map(BigInt)),
-      sizes: uncondTokensShape,
+      dataPtr: new BigInt64Array(uncondTokensArray.map(BigInt)),
+      sizes: [1, tokensArray.length],
       scalarType: ScalarType.LONG,
     };
+
+    // ------------------------------ Encoding ------------------------------
+    const embeddingsTensor = (await encoder.forward(tokensTensor))[0];
+
     const uncondEmbeddingsTensor = (
       await encoder.forward(uncondTokensTensor)
     )[0];
     const textEmbeddingsTensor = concatenateTensors(
       uncondEmbeddingsTensor,
-      encoderOutput
+      embeddingsTensor
     );
 
-    const in_channels = 4;
+    const inChannels = 4;
     const latent_height = Math.floor(height / 8);
     const latent_width = Math.floor(width / 8);
 
-    const shape = [batchSize, in_channels, latent_height, latent_width];
+    const shape = [batchSize, inChannels, latent_height, latent_width];
     let latentsTensor = randomNormalTensor(shape);
 
     scheduler.set_timesteps(numInferenceSteps);

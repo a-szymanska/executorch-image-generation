@@ -1,3 +1,4 @@
+/* eslint-disable react-hooks/exhaustive-deps */
 import { Decoder } from "@/pipeline/decoder";
 import { Encoder } from "@/pipeline/encoder";
 import { getBase64FromImage, RawImage } from "@/pipeline/image_utils";
@@ -6,27 +7,35 @@ import { Unet } from "@/pipeline/unet";
 import React, { useEffect, useState } from "react";
 import { Button, Image, ScrollView, StyleSheet, Text } from "react-native";
 import { Scheduler } from "@/pipeline/scheduler";
-import { SCHEDULER, TEXT_ENCODER, UNET, VAE } from "@/pipeline/model_paths";
+import {
+  SCHEDULER,
+  TEXT_ENCODER,
+  TOKENIZER,
+  UNET,
+  VAE,
+} from "@/pipeline/model_paths";
+import { TokenizerModule } from "react-native-executorch";
 
 export default function App() {
   const [pipelineRunning, setPipelineRunning] = useState<boolean>(false);
   const [imageUri, setImageUri] = useState<string | null>(null);
-  const scheduler = React.useMemo(() => new Scheduler(), []);
-  const encoder = React.useMemo(() => new Encoder(), []);
-  const unet = React.useMemo(() => new Unet(), []);
-  const decoder = React.useMemo(() => new Decoder(), []);
+  const tokenizer = new TokenizerModule();
+  const [scheduler] = useState(() => new Scheduler());
+  const [encoder] = useState(() => new Encoder());
+  const [unet] = useState(() => new Unet());
+  const [decoder] = useState(() => new Decoder());
   let loadingError: any = null;
 
   useEffect(() => {
     const loadModels = async () => {
       try {
         console.log("Loading models...");
+        await tokenizer.load(TOKENIZER);
         await scheduler.load(SCHEDULER);
         await encoder.load(TEXT_ENCODER);
         await unet.load(UNET);
         await decoder.load(VAE);
-
-        console.log("Models loaded successfully");
+        console.log("Models loaded!");
       } catch (e: any) {
         console.error("Failed to load models:", e);
         loadingError = e;
@@ -40,6 +49,7 @@ export default function App() {
     try {
       setPipelineRunning(true);
       await runPipeline(
+        tokenizer,
         scheduler,
         encoder,
         unet,
@@ -89,20 +99,10 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     color: "#333",
   },
-  statusContainer: {
-    flexDirection: "column",
-    alignSelf: "flex-start",
-    alignItems: "flex-start",
-    justifyContent: "center",
-    padding: 20,
-  },
-  text: {
-    fontSize: 16,
-    color: "#666",
-  },
   image: {
-    width: 512,
-    height: 512,
+    width: 320,
+    height: 320,
+    marginVertical: 50,
     resizeMode: "contain",
   },
 });

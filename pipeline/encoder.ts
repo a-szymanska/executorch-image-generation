@@ -8,7 +8,12 @@ export class Encoder {
   }
 
   async forward(inputTensor: TensorPtr): Promise<TensorPtr[]> {
-    const outputTensor = await this.module.forward([inputTensor]);
-    return outputTensor;
+    try {
+      const outputTensor = await this.module.forward([inputTensor]);
+      return outputTensor;
+    } catch (e: any) {
+      console.error("Encoder error:", e);
+      return [];
+    }
   }
 }
