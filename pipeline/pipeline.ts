@@ -13,7 +13,7 @@ import { Scheduler } from "./scheduler";
 import { Unet } from "./unet";
 import { ScalarType } from "react-native-executorch/src/types/common";
 import { TokenizerModule } from "react-native-executorch";
-import { ModelSource } from "./model_paths";
+import { ModelSource } from "../constants/Model";
 
 const GUIDANCE_SCALE = 7.5;
 const BATCH_SIZE = 1;
@@ -55,7 +55,6 @@ export class Pipeline {
   }
 
   async run(prompt: string, numInferenceSteps: number = 5): Promise<void> {
-    console.log("Prompt:", prompt);
     try {
       // ----------------------------- Tokenizing -----------------------------
       const tokensArray = await this.tokenizer.encode(
@@ -66,7 +65,6 @@ export class Pipeline {
         sizes: [1, tokensArray.length],
         scalarType: ScalarType.LONG,
       };
-      console.log(tokensTensor);
 
       const uncondTokensArray = await this.tokenizer.encode("<|startoftext|>");
       const uncondTokensTensor = {

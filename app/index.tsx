@@ -1,6 +1,6 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { getBase64FromImage, RawImage } from "@/pipeline/image_utils";
-import { BK_SDM_TINY_VPRED } from "@/pipeline/model_paths";
+import { BK_SDM_TINY_VPRED } from "@/constants/Model";
 import { Pipeline } from "@/pipeline/pipeline";
 import React, { useEffect, useRef, useState } from "react";
 import {
