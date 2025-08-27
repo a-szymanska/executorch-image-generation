@@ -2,7 +2,7 @@
 import { getBase64FromImage, RawImage } from "@/pipeline/image_utils";
 import { BK_SDM_TINY_VPRED } from "@/pipeline/model_paths";
 import { Pipeline } from "@/pipeline/pipeline";
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   Button,
   Image,
@@ -13,9 +13,9 @@ import {
 } from "react-native";
 
 export default function App() {
-  const [pipelineLoading, setPipelineLoading] = useState<boolean>(false);
+  const pipelineLoading = useRef<boolean>(false);
   const [pipelineRunning, setPipelineRunning] = useState<boolean>(false);
-  const [prompt, setPrompt] = useState<string>("");
+  const [prompt, setPrompt] = useState<string>("a castle");
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [pipeline] = useState(
     () =>
@@ -29,17 +29,18 @@ export default function App() {
     const loadModels = async () => {
       try {
         console.log("Loading models...");
+        pipelineLoading.current = true;
         await pipeline.load(BK_SDM_TINY_VPRED);
         console.log("Models loaded!");
       } catch (e: any) {
         console.error(e);
         loadingError = e;
+      } finally {
+        pipelineLoading.current = false;
       }
     };
 
-    setPipelineLoading(true);
     loadModels();
-    setPipelineLoading(false);
   }, [pipeline]);
 
   const generate = async () => {
@@ -67,7 +68,7 @@ export default function App() {
       <Button
         title={"Run Pipeline"}
         onPress={generate}
-        disabled={pipelineLoading || pipelineRunning || !!loadingError}
+        disabled={pipelineLoading.current || pipelineRunning || !!loadingError}
       />
       {imageUri && (
         <Image

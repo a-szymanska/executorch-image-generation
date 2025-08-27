@@ -66,6 +66,7 @@ export class Pipeline {
         sizes: [1, tokensArray.length],
         scalarType: ScalarType.LONG,
       };
+      console.log(tokensTensor);
 
       const uncondTokensArray = await this.tokenizer.encode("<|startoftext|>");
       const uncondTokensTensor = {
