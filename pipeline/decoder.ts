@@ -11,4 +11,8 @@ export class Decoder {
     const outputTensor = await this.module.forward([inputTensor]);
     return outputTensor;
   }
+
+  delete(): void {
+    this.module.delete();
+  }
 }

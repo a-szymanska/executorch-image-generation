@@ -24,4 +24,8 @@ export class Unet {
     const outputTensor = await this.module.forward(intputTensor);
     return outputTensor;
   }
+
+  delete(): void {
+    this.module.delete();
+  }
 }

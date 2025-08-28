@@ -3,7 +3,6 @@ import {
   chunkTensor,
   concatenateTensors,
   divScalar,
-  formatTensor,
   randomNormalTensor,
 } from "@/pipeline/tensor_utils";
 import { Decoder } from "./decoder";
@@ -22,6 +21,7 @@ export class Pipeline {
   height: number;
   width: number;
 
+  model: ModelSource | null;
   tokenizer: TokenizerModule;
   scheduler: Scheduler;
   encoder: Encoder;
@@ -30,6 +30,7 @@ export class Pipeline {
   onInferenceStep: ((rawImage: RawImage | null) => void) | null;
 
   constructor() {
+    this.model = null;
     this.tokenizer = new TokenizerModule();
     this.scheduler = new Scheduler();
     this.encoder = new Encoder();
@@ -43,16 +44,8 @@ export class Pipeline {
   }
 
   async load(model: ModelSource): Promise<void> {
-    try {
-      this.height = this.width = model.size;
-      await this.tokenizer.load(model.tokenizer);
-      await this.scheduler.load(model.schedulerSource);
-      await this.encoder.load(model.encoderSource);
-      await this.unet.load(model.unetSource);
-      await this.decoder.load(model.decoderSource);
-    } catch (e: any) {
-      throw Error("Failed to load the pipeline components:", e);
-    }
+    this.model = model;
+    this.height = this.width = model.size;
   }
 
   async run(
@@ -63,6 +56,7 @@ export class Pipeline {
     this.onInferenceStep = onInferenceStep;
     try {
       // ----------------------------- Tokenizing -----------------------------
+      await this.tokenizer.load(this.model!.tokenizer);
       const tokensArray = await this.tokenizer.encode(
         "<|startoftext|>" + prompt
       );
@@ -78,8 +72,10 @@ export class Pipeline {
         sizes: [1, tokensArray.length],
         scalarType: ScalarType.LONG,
       };
-
       // ------------------------------ Encoding ------------------------------
+      await this.encoder.load(this.model!.encoderSource);
+      await this.scheduler.load(this.model!.schedulerSource);
+
       const embeddingsTensor = (await this.encoder.forward(tokensTensor))[0];
 
       const uncondEmbeddingsTensor = (
@@ -100,7 +96,13 @@ export class Pipeline {
       this.scheduler.set_timesteps(numInferenceSteps);
       const timesteps = this.scheduler.timesteps;
 
+      this.encoder.delete();
       // ------------------------------ Denoising -----------------------------
+      await this.unet.load(this.model!.unetSource);
+      if (onInferenceStep) {
+        await this.decoder.load(this.model!.decoderSource);
+      }
+
       for (let i = 0; i < timesteps.length; i++) {
         const t = timesteps[i];
         console.log(`Step ${i + 1}/${timesteps.length} (t=${t})`);
@@ -135,9 +137,13 @@ export class Pipeline {
           const rawImage = convertTensorToImage(resultTensor);
           this.onInferenceStep(rawImage);
         }
-        // ----------------------------------------------------------------------
       }
+      this.unet.delete();
+
       // ------------------------------ Decoding ------------------------------
+      if (!onInferenceStep) {
+        await this.decoder.load(this.model!.decoderSource);
+      }
       const latentsScaledTensor = divScalar(latentsTensor, 0.18215);
       const resultTensor = (await this.decoder.forward(latentsScaledTensor))[0];
 

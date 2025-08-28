@@ -16,4 +16,8 @@ export class Encoder {
       return [];
     }
   }
+
+  delete(): void {
+    this.module.delete();
+  }
 }

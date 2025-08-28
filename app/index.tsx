@@ -31,7 +31,7 @@ export default function App() {
       try {
         console.log("Loading models...");
         pipelineLoading.current = true;
-        await pipeline.load(BK_SDM_TINY_VPRED_256);
+        await pipeline.load(BK_SDM_TINY_VPRED_512);
         console.log("Models loaded!");
       } catch (e: any) {
         console.error(e);
