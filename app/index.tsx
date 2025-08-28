@@ -1,6 +1,9 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import { getBase64FromImage, RawImage } from "@/pipeline/image_utils";
-import { BK_SDM_TINY_VPRED } from "@/constants/Model";
+import {
+  BK_SDM_TINY_VPRED_256,
+  BK_SDM_TINY_VPRED_512,
+} from "@/constants/Model";
 import { Pipeline } from "@/pipeline/pipeline";
 import React, { useEffect, useRef, useState } from "react";
 import {
@@ -17,12 +20,10 @@ export default function App() {
   const [pipelineRunning, setPipelineRunning] = useState<boolean>(false);
   const [prompt, setPrompt] = useState<string>("a castle");
   const [imageUri, setImageUri] = useState<string | null>(null);
-  const [pipeline] = useState(
-    () =>
-      new Pipeline((rawImage: RawImage | null) => {
-        setImageUri(getBase64FromImage(rawImage));
-      })
-  );
+  const displayImage = (rawImage: RawImage | null) => {
+    setImageUri(getBase64FromImage(rawImage));
+  };
+  const [pipeline] = useState(() => new Pipeline());
   let loadingError: any = null;
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export default function App() {
       try {
         console.log("Loading models...");
         pipelineLoading.current = true;
-        await pipeline.load(BK_SDM_TINY_VPRED);
+        await pipeline.load(BK_SDM_TINY_VPRED_256);
         console.log("Models loaded!");
       } catch (e: any) {
         console.error(e);
@@ -46,7 +47,8 @@ export default function App() {
   const generate = async () => {
     try {
       setPipelineRunning(true);
-      await pipeline.run(prompt);
+      const rawImage = await pipeline.run(prompt, 20);
+      displayImage(rawImage);
       console.log("Image generated!");
     } catch (e: any) {
       console.error("Generating error:", e.message || e);
@@ -104,8 +106,8 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   image: {
-    width: 320,
-    height: 320,
+    width: 256,
+    height: 256,
     marginVertical: 50,
     resizeMode: "contain",
   },

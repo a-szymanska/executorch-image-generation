@@ -27,16 +27,16 @@ export class Pipeline {
   encoder: Encoder;
   unet: Unet;
   decoder: Decoder;
-  onInferenceStep: (rawImage: RawImage | null) => void;
+  onInferenceStep: ((rawImage: RawImage | null) => void) | null;
 
-  constructor(onInferenceStep: (rawImage: RawImage | null) => void) {
+  constructor() {
     this.tokenizer = new TokenizerModule();
     this.scheduler = new Scheduler();
     this.encoder = new Encoder();
     this.unet = new Unet();
     this.decoder = new Decoder();
 
-    this.onInferenceStep = onInferenceStep;
+    this.onInferenceStep = null;
 
     this.height = 512;
     this.width = 512;
@@ -44,6 +44,7 @@ export class Pipeline {
 
   async load(model: ModelSource): Promise<void> {
     try {
+      this.height = this.width = model.size;
       await this.tokenizer.load(model.tokenizer);
       await this.scheduler.load(model.schedulerSource);
       await this.encoder.load(model.encoderSource);
@@ -54,7 +55,12 @@ export class Pipeline {
     }
   }
 
-  async run(prompt: string, numInferenceSteps: number = 5): Promise<void> {
+  async run(
+    prompt: string,
+    numInferenceSteps: number = 10,
+    onInferenceStep: ((rawImage: RawImage | null) => void) | null = null
+  ): Promise<RawImage | null> {
+    this.onInferenceStep = onInferenceStep;
     try {
       // ----------------------------- Tokenizing -----------------------------
       const tokensArray = await this.tokenizer.encode(
@@ -120,23 +126,26 @@ export class Pipeline {
         ).prev_sample;
 
         // --------------------- For display of intermediate ---------------------
-        const latentsScaledTensor = divScalar(latentsTensor, 0.18215);
-        const resultTensor = (
-          await this.decoder.forward(latentsScaledTensor)
-        )[0];
+        if (this.onInferenceStep) {
+          const latentsScaledTensor = divScalar(latentsTensor, 0.18215);
+          const resultTensor = (
+            await this.decoder.forward(latentsScaledTensor)
+          )[0];
 
-        const rawImage = convertTensorToImage(resultTensor);
-        this.onInferenceStep(rawImage);
+          const rawImage = convertTensorToImage(resultTensor);
+          this.onInferenceStep(rawImage);
+        }
         // ----------------------------------------------------------------------
       }
       // ------------------------------ Decoding ------------------------------
-      // const latentsScaledTensor = divScalar(latentsTensor, 0.18215);
-      // const resultTensor = (await decoder.forward(latentsScaledTensor))[0];
+      const latentsScaledTensor = divScalar(latentsTensor, 0.18215);
+      const resultTensor = (await this.decoder.forward(latentsScaledTensor))[0];
 
-      // const rawImage = convertTensorToImage(resultTensor);
-      // onInferenceStep(rawImage);
+      const rawImage = convertTensorToImage(resultTensor);
+      return rawImage;
     } catch (e: any) {
       console.error("Inference error:", e.message || e);
+      return null;
     }
   }
 }
